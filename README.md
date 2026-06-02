@@ -75,6 +75,14 @@
 * DFI 区間別の平均エンゲル係数の可視化
 * 連続 DFI モデルと二値化モデルの比較
 
+## 出力される図
+
+`code/analysis.R` を実行すると、以下の図が `results/figures/` フォルダに保存されます。
+
+- `engel_by_dfi_year.png`：DFI 区間別の平均エンゲル係数（2014 年・2018 年）
+- `engel_by_dfi_treat.png`：高 DFI 地域と低 DFI 地域の比較
+- `did_model_comparison.png`：連続 DFI モデルと二値化モデルの比較
+
 ## 主な結果
 
 主推定では、DFI と政策後ダミー変数の交互項である **DFI × Post** の係数が正であり、統計的にも有意な結果となりました。
