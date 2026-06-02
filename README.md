@@ -116,12 +116,15 @@
 │   └── README.md
 ├── results/
 │   └── figures/
+│       ├── engel_by_dfi_year.png
+│       ├── engel_by_dfi_treat.png
+│       └── did_model_comparison.png
 └── docs/
     └── research_summary.md
 ```
 
-* `README.md`：プロジェクトの概要、分析方法、主な結果をまとめたファイル
-* `code/analysis.R`：データ整形、DID 推定、可視化を行う R スクリプト
-* `data/README.md`：使用データの概要と注意点を説明するファイル
-* `results/figures/`：分析で作成した図を保存するフォルダ
-* `docs/research_summary.md`：研究内容を簡潔にまとめた補足資料
+- `README.md`：研究概要、分析方法、主な結果を説明するファイルです。
+- `code/analysis.R`：データ整形、DID 推定、頑健性検証、および可視化を行う R スクリプトです。
+- `data/README.md`：使用データの内容や注意点を説明するファイルです。
+- `results/figures/`：R スクリプトによって出力された図を保存するフォルダです。
+- `docs/research_summary.md`：卒業研究の概要をまとめた補足資料です。
