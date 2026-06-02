@@ -1,2 +1,9 @@
 # Digital Financial Inclusion and Food Consumption in China
-This project analyzes the impact of Digital Financial Inclusion (DFI) on household food consumption in China, using CFPS household panel data and provincial-level DFI index data. The main outcome variable is the Engel coefficient, and the empirical method is Difference-in-Differences (DID).
+
+## プロジェクト概要
+
+本プロジェクトは、卒業論文「デジタル金融包摂が中国の食料消費に与える影響」をもとに作成したデータ分析プロジェクトです。
+
+中国の家計パネル調査である CFPS の 2014 年・2018 年データと、省別のデジタル金融包摂指数（DFI）を結合し、DFI の発展水準が家計のエンゲル係数にどのような影響を与えるのかを分析しました。
+
+分析手法としては、差分の差分法（Difference-in-Differences, DID）を用い、世帯固定効果および年次固定効果を考慮した推定を行っています。
