@@ -132,7 +132,12 @@ p_year <- ggplot(
   )
 
 print(p_year)
-
+ggsave(
+  filename = "results/figures/engel_by_dfi_year.png",
+  plot = p_year,
+  width = 8,
+  height = 5
+)
 
 # 7. 可視化 2：高 DFI 地域と低 DFI 地域の比較 ------------------------------
 
@@ -173,7 +178,12 @@ p_treat <- ggplot(
   )
 
 print(p_treat)
-
+ggsave(
+  filename = "results/figures/engel_by_dfi_treat.png",
+  plot = p_treat,
+  width = 8,
+  height = 5
+)
 
 # 8. 可視化 3：連続 DFI モデルと二値化モデルの比較 -------------------------
 
@@ -244,7 +254,12 @@ p_compare <- ggplot() +
   )
 
 print(p_compare)
-
+ggsave(
+  filename = "results/figures/did_model_comparison.png",
+  plot = p_compare,
+  width = 8,
+  height = 5
+)
 
 # 9. 変数の型を確認 ---------------------------------------------------------
 
