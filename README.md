@@ -77,11 +77,23 @@
 
 ## 出力される図
 
-`code/analysis.R` を実行すると、以下の図が `results/figures/` フォルダに保存されます。
+`code/analysis.R` を実行すると、以下の図が `results/figures/` フォルダに保存されます。以下は、本分析で作成した主な可視化結果です。
 
 - `engel_by_dfi_year.png`：DFI 区間別の平均エンゲル係数（2014 年・2018 年）
 - `engel_by_dfi_treat.png`：高 DFI 地域と低 DFI 地域の比較
 - `did_model_comparison.png`：連続 DFI モデルと二値化モデルの比較
+
+### DFI 区間別の平均エンゲル係数（2014 年・2018 年）
+
+![DFI 区間別の平均エンゲル係数](results/figures/engel_by_dfi_year.png)
+
+### 高 DFI 地域と低 DFI 地域の比較
+
+![高 DFI 地域と低 DFI 地域の比較](results/figures/engel_by_dfi_treat.png)
+
+### 連続 DFI モデルと二値化モデルの比較
+
+![連続 DFI モデルと二値化モデルの比較](results/figures/did_model_comparison.png)
 
 ## 主な結果
 
