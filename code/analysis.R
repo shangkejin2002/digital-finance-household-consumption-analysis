@@ -1,6 +1,9 @@
 # Digital Financial Inclusion and Food Consumption in China
 # DID analysis and visualization using R
 
+# このスクリプトは原論文の分析仕様・変数・結果を変更せず、
+# 最終分析データの読み込みから DID 推定、図の出力までをまとめたものです。
+
 # 1. パッケージの読み込み ---------------------------------------------------
 
 library(tidyverse)
@@ -20,7 +23,33 @@ library(modelsummary)
 # 使用するシート：
 # Sheet1
 
-df <- read_excel("data/analysis_data.xlsx", sheet = "Sheet1")
+input_file <- "data/analysis_data.xlsx"
+figure_dir <- "results/figures"
+
+if (!file.exists(input_file)) {
+  stop(
+    "分析データが見つかりません。data/analysis_data.xlsx を配置してください。"
+  )
+}
+
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+
+df <- read_excel(input_file, sheet = "Sheet1")
+
+required_columns <- c(
+  "ID", "Treat_p", "Province", "Engel_2014", "Engel_2018", "DFI"
+)
+
+missing_columns <- setdiff(required_columns, names(df))
+
+if (length(missing_columns) > 0) {
+  stop(
+    paste0(
+      "必要な変数が不足しています: ",
+      paste(missing_columns, collapse = ", ")
+    )
+  )
+}
 
 # データの列名を確認
 names(df)
@@ -133,7 +162,7 @@ p_year <- ggplot(
 
 print(p_year)
 ggsave(
-  filename = "results/figures/engel_by_dfi_year.png",
+  filename = file.path(figure_dir, "engel_by_dfi_year.png"),
   plot = p_year,
   width = 8,
   height = 5
@@ -179,13 +208,13 @@ p_treat <- ggplot(
 
 print(p_treat)
 ggsave(
-  filename = "results/figures/engel_by_dfi_treat.png",
+  filename = file.path(figure_dir, "engel_by_dfi_treat.png"),
   plot = p_treat,
   width = 8,
   height = 5
 )
 
-# 8. 可視化 3：連続 DFI モデルと二値化モデルの比較 -------------------------
+# 8. 可視化 3：連続 DFI と二値化 DFI の記述的パターン比較 -----------------
 
 # 連続 DFI を用いた傾向と、
 # DFI を二値化した場合の傾向を比較する。
@@ -255,7 +284,7 @@ p_compare <- ggplot() +
 
 print(p_compare)
 ggsave(
-  filename = "results/figures/did_model_comparison.png",
+  filename = file.path(figure_dir, "did_model_comparison.png"),
   plot = p_compare,
   width = 8,
   height = 5
