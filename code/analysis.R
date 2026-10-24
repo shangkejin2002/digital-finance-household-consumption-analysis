@@ -1,26 +1,34 @@
-# Digital Financial Inclusion and Household Food Consumption in China
-# Portfolio analysis: thesis specification, data-quality checks, and figures
+# Digital Financial Inclusion and Food Consumption in China
+# DID analysis and visualization using R
 
-suppressPackageStartupMessages({
-  library(tidyverse)
-  library(fixest)
-  library(readxl)
-  library(modelsummary)
-})
+# このスクリプトは原論文の分析仕様・変数・結果を変更せず、
+# 最終分析データの読み込みから DID 推定、図の出力までをまとめたものです。
 
-# 1. Input and output ---------------------------------------------------------
+# 1. パッケージの読み込み ---------------------------------------------------
 
-# Set ANALYSIS_DATA when the authorized file is stored elsewhere, for example:
-# Sys.setenv(ANALYSIS_DATA = "/path/to/analysis_data.xlsx")
-input_file <- Sys.getenv("ANALYSIS_DATA", unset = "data/analysis_data.xlsx")
-figure_dir <- Sys.getenv("FIGURE_DIR", unset = "results/figures")
+library(tidyverse)
+library(fixest)
+library(readxl)
+library(modelsummary)
+
+# 2. データの読み込み -------------------------------------------------------
+
+# 注意：
+# 元データは利用制限があるため、このリポジトリには含めていません。
+# 分析を再現する場合は、データファイルを data/ フォルダに配置してください。
+#
+# 想定するデータファイル名：
+# data/analysis_data.xlsx
+#
+# 使用するシート：
+# Sheet1
+
+input_file <- "data/analysis_data.xlsx"
+figure_dir <- "results/figures"
 
 if (!file.exists(input_file)) {
   stop(
-    paste0(
-      "分析データが見つかりません: ", input_file, "\n",
-      "ANALYSIS_DATA に利用許可を得た分析ファイルのパスを指定してください。"
-    )
+    "分析データが見つかりません。data/analysis_data.xlsx を配置してください。"
   )
 }
 
@@ -29,8 +37,9 @@ dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 df <- read_excel(input_file, sheet = "Sheet1")
 
 required_columns <- c(
-  "ID", "Province", "Engel_2014", "Engel_2018", "DFI"
+  "ID", "Treat_p", "Province", "Engel_2014", "Engel_2018", "DFI"
 )
+
 missing_columns <- setdiff(required_columns, names(df))
 
 if (length(missing_columns) > 0) {
@@ -42,266 +51,245 @@ if (length(missing_columns) > 0) {
   )
 }
 
-if (anyDuplicated(df$ID) > 0) {
-  stop("最終分析データの ID が一意ではありません。世帯対応を確認してください。")
-}
+# データの列名を確認
+names(df)
 
-# Treat_p is reconstructed here rather than read from the Excel column.
-# This matches the code used for the thesis robustness model.
-median_dfi <- median(df$DFI, na.rm = TRUE)
 
-df <- df %>%
-  mutate(
-    Treat_p = if_else(DFI >= median_dfi, 1L, 0L)
-  )
+# 3. データ整形 -------------------------------------------------------------
 
-to_long <- function(data) {
-  data %>%
-    pivot_longer(
-      cols = c(Engel_2014, Engel_2018),
-      names_to = "Engel_year",
-      values_to = "Engel"
-    ) %>%
-    mutate(
-      Year = if_else(Engel_year == "Engel_2014", 2014L, 2018L),
-      Post = if_else(Year == 2018L, 1L, 0L)
-    )
-}
+# Engel_2014 と Engel_2018 をロング形式に変換し、
+# 年ダミー Year と政策後ダミー Post を作成する。
 
-data_long <- to_long(df)
-
-# 2. Data-quality audit -------------------------------------------------------
-
-quality_summary <- tibble(
-  item = c(
-    "Households",
-    "Province-level regions",
-    "DFI median used for Treat_p",
-    "Missing Engel values in 2014",
-    "Missing Engel values in 2018",
-    "Engel values outside [0, 1] in 2014",
-    "Engel values outside [0, 1] in 2018"
-  ),
-  value = c(
-    nrow(df),
-    n_distinct(df$Province),
-    median_dfi,
-    sum(is.na(df$Engel_2014)),
-    sum(is.na(df$Engel_2018)),
-    sum(!is.na(df$Engel_2014) & !between(df$Engel_2014, 0, 1)),
-    sum(!is.na(df$Engel_2018) & !between(df$Engel_2018, 0, 1))
-  )
-)
-
-cat("\nData-quality audit\n")
-print(quality_summary, n = Inf)
-
-# 3. Thesis specification ----------------------------------------------------
-
-# These models reproduce the specification and sample used in the thesis.
-# The estimates should be interpreted as differences in changes associated
-# with baseline DFI, not as definitive causal effects.
-did_main_thesis <- feols(
-  Engel ~ DFI * Post | ID + Year,
-  data = data_long,
-  cluster = "Province"
-)
-
-did_binary_thesis <- feols(
-  Engel ~ Treat_p * Post | ID + Year,
-  data = data_long,
-  cluster = "Province"
-)
-
-cat("\nThesis specification\n")
-modelsummary(
-  list(
-    "Continuous DFI" = did_main_thesis,
-    "High vs low DFI" = did_binary_thesis
-  ),
-  coef_map = c(
-    "DFI:Post" = "DFI × 2018",
-    "Treat_p:Post" = "High DFI × 2018"
-  ),
-  fmt = "%.5f",
-  output = "markdown"
-)
-
-# 4. Sensitivity analysis ----------------------------------------------------
-
-# Engel is a share of food expenditure in total consumption expenditure.
-# Because values outside [0, 1] require additional source-data validation,
-# this sensitivity analysis retains only households whose values are within
-# the theoretical range in both years. It is reported separately and does not
-# replace the thesis estimates.
-df_valid <- df %>%
-  filter(
-    between(Engel_2014, 0, 1),
-    between(Engel_2018, 0, 1)
-  )
-
-data_long_valid <- to_long(df_valid)
-
-did_main_valid <- feols(
-  Engel ~ DFI * Post | ID + Year,
-  data = data_long_valid,
-  cluster = "Province"
-)
-
-did_binary_valid <- feols(
-  Engel ~ Treat_p * Post | ID + Year,
-  data = data_long_valid,
-  cluster = "Province"
-)
-
-cat("\nSensitivity analysis: households within 0 <= Engel <= 1 in both years\n")
-cat("Households:", nrow(df_valid), "\n")
-modelsummary(
-  list(
-    "Continuous DFI" = did_main_valid,
-    "High vs low DFI" = did_binary_valid
-  ),
-  coef_map = c(
-    "DFI:Post" = "DFI × 2018",
-    "Treat_p:Post" = "High DFI × 2018"
-  ),
-  fmt = "%.5f",
-  output = "markdown"
-)
-
-# 5. Figure 1: descriptive changes by DFI group ------------------------------
-
-group_summary <- data_long_valid %>%
-  mutate(
-    DFI_group = factor(
-      Treat_p,
-      levels = c(0, 1),
-      labels = c("低DFI地域", "高DFI地域")
-    )
+data_long <- df %>%
+  pivot_longer(
+    cols = c(Engel_2014, Engel_2018),
+    names_to  = "Engel_year",
+    values_to = "Engel"
   ) %>%
-  group_by(DFI_group, Year) %>%
+  mutate(
+    Year = if_else(Engel_year == "Engel_2014", 2014L, 2018L),
+    Post = if_else(Year == 2018L, 1, 0)
+  )
+
+# データの概要を確認
+summary(data_long)
+datasummary_skim(data_long)
+
+
+# 4. 主推定：連続 DFI を用いた DID 推定 -----------------------------------
+
+# DID モデル：
+# Engel ~ DFI * Post | ID + Year
+#
+# Engel：エンゲル係数
+# DFI：2014年時点の省別デジタル金融包摂指数
+# Post：政策後ダミー（2018年 = 1, 2014年 = 0）
+# ID + Year：世帯固定効果および年次固定効果
+# cluster = "Province"：省レベルでクラスタリングした標準誤差
+
+did_main <- feols(
+  Engel ~ DFI * Post | ID + Year,
+  data    = data_long,
+  cluster = "Province"
+)
+
+summary(did_main)
+
+# 回帰結果を表として表示
+modelsummary(did_main, fmt = "%.5f")
+
+
+# 5. 頑健性検証：DFI を二値化した DID 推定 --------------------------------
+
+# Treat_p は元データに含まれている二値変数を使用する。
+# Treat_p = 1：高 DFI 地域
+# Treat_p = 0：低 DFI 地域
+
+table(data_long$Treat_p)
+
+did_binary <- feols(
+  Engel ~ Treat_p * Post | ID + Year,
+  data    = data_long,
+  cluster = "Province"
+)
+
+summary(did_binary)
+
+# 回帰結果を表として表示
+modelsummary(did_binary, fmt = "%.5f")
+
+
+# 6. 可視化 1：DFI 区間別の平均エンゲル係数 -------------------------------
+
+# DFI を 5 ポイント幅で区間化し、
+# 2014年・2018年それぞれの平均エンゲル係数を可視化する。
+
+bin_width <- 5
+
+plot_data_year <- data_long %>%
+  mutate(
+    DFI_bin = floor(DFI / bin_width) * bin_width
+  ) %>%
+  group_by(Year, DFI_bin) %>%
   summarise(
-    households = n(),
-    mean_engel = mean(Engel),
-    se = sd(Engel) / sqrt(households),
-    lower = mean_engel - 1.96 * se,
-    upper = mean_engel + 1.96 * se,
+    mean_Engel = mean(Engel, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(Year, DFI_bin)
+
+p_year <- ggplot(
+  plot_data_year,
+  aes(
+    x = DFI_bin,
+    y = mean_Engel,
+    color = factor(Year),
+    group = factor(Year)
+  )
+) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Engel Coefficient by DFI Bins",
+    x = "DFI (binned, width = 5)",
+    y = "Average Engel Coefficient",
+    color = "Year"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+print(p_year)
+ggsave(
+  filename = file.path(figure_dir, "engel_by_dfi_year.png"),
+  plot = p_year,
+  width = 8,
+  height = 5
+)
+
+# 7. 可視化 2：高 DFI 地域と低 DFI 地域の比較 ------------------------------
+
+# Treat_p ごとに、DFI 区間別の平均エンゲル係数を可視化する。
+
+plot_data_treat <- data_long %>%
+  mutate(
+    DFI_bin = floor(DFI / bin_width) * bin_width
+  ) %>%
+  group_by(Treat_p, DFI_bin) %>%
+  summarise(
+    mean_Engel = mean(Engel, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(Treat_p, DFI_bin)
+
+p_treat <- ggplot(
+  plot_data_treat,
+  aes(
+    x = DFI_bin,
+    y = mean_Engel,
+    color = factor(Treat_p),
+    group = factor(Treat_p)
+  )
+) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Engel Coefficient by DFI Bins: High vs Low DFI Regions",
+    x = "DFI (binned, width = 5)",
+    y = "Average Engel Coefficient",
+    color = "Treat_p\n0 = Low DFI, 1 = High DFI"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+print(p_treat)
+ggsave(
+  filename = file.path(figure_dir, "engel_by_dfi_treat.png"),
+  plot = p_treat,
+  width = 8,
+  height = 5
+)
+
+# 8. 可視化 3：連続 DFI と二値化 DFI の記述的パターン比較 -----------------
+
+# 連続 DFI を用いた傾向と、
+# DFI を二値化した場合の傾向を比較する。
+
+df_long_clean <- data_long %>%
+  mutate(
+    DFI_bin = floor(DFI / bin_width) * bin_width
+  )
+
+# 連続 DFI モデルに対応する可視化データ
+# ここでは政策後である 2018 年の平均エンゲル係数を使用する。
+
+plot_main <- df_long_clean %>%
+  filter(Post == 1) %>%
+  group_by(DFI_bin) %>%
+  summarise(
+    main_mean = mean(Engel, na.rm = TRUE),
     .groups = "drop"
   )
 
-p_change <- ggplot(
-  group_summary,
-  aes(x = factor(Year), y = mean_engel, color = DFI_group, group = DFI_group)
-) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.06, linewidth = 0.7) +
-  geom_line(linewidth = 1.1) +
-  geom_point(size = 3) +
-  scale_color_manual(values = c("低DFI地域" = "#4C78A8", "高DFI地域" = "#E45756")) +
-  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
-  labs(
-    title = "DFI水準別にみた平均エンゲル係数の変化",
-    subtitle = "両年とも0〜1の範囲にある世帯を使用（エラーバーは95%信頼区間）",
-    x = "調査年",
-    y = "平均エンゲル係数",
-    color = "2014年のDFI水準",
-    caption = "出所：CFPS 2014・2018、PKU-DFIIC 2014。記述統計であり、因果効果を示すものではない。"
+# 二値化モデルに対応する可視化データ
+# ここでは高 DFI 地域 Treat_p == 1 の平均エンゲル係数を使用する。
+
+plot_binary <- df_long_clean %>%
+  filter(Treat_p == 1) %>%
+  group_by(DFI_bin) %>%
+  summarise(
+    binary_mean = mean(Engel, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+plot_merge <- left_join(plot_main, plot_binary, by = "DFI_bin")
+
+p_compare <- ggplot() +
+  geom_line(
+    data = plot_merge,
+    aes(x = DFI_bin, y = main_mean, color = "Continuous DFI"),
+    linewidth = 1.2
   ) +
-  theme_minimal(base_size = 13, base_family = "Hiragino Sans") +
+  geom_point(
+    data = plot_merge,
+    aes(x = DFI_bin, y = main_mean, color = "Continuous DFI"),
+    size = 2
+  ) +
+  geom_line(
+    data = plot_merge,
+    aes(x = DFI_bin, y = binary_mean, color = "Binary Treat_p"),
+    linewidth = 1.2,
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = plot_merge,
+    aes(x = DFI_bin, y = binary_mean, color = "Binary Treat_p"),
+    size = 2
+  ) +
+  labs(
+    title = "Comparison of DID Patterns: Continuous DFI vs Binary Treat_p",
+    x = "DFI (binned, width = 5)",
+    y = "Average Engel Coefficient",
+    color = "Model Type"
+  ) +
+  theme_minimal(base_size = 14) +
   theme(
     legend.position = "top",
-    plot.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    plot.caption = element_text(hjust = 0, color = "grey35")
+    plot.title = element_text(hjust = 0.5, face = "bold")
   )
 
+print(p_compare)
 ggsave(
-  filename = file.path(figure_dir, "engel_change_by_dfi_group.png"),
-  plot = p_change,
+  filename = file.path(figure_dir, "did_model_comparison.png"),
+  plot = p_compare,
   width = 8,
-  height = 5,
-  dpi = 300,
-  bg = "white"
+  height = 5
 )
 
-# 6. Figure 2: thesis estimates and sensitivity analysis ---------------------
+# 9. 変数の型を確認 ---------------------------------------------------------
 
-extract_effect <- function(model, term, scale_factor, model_label, sample_label) {
-  estimate <- unname(coef(model)[term]) * scale_factor * 100
-  interval <- as.numeric(
-    confint(model, parm = term, level = 0.95)
-  ) * scale_factor * 100
-
-  tibble(
-    model = model_label,
-    sample = sample_label,
-    estimate = estimate,
-    lower = interval[[1]],
-    upper = interval[[2]]
-  )
-}
-
-effect_data <- bind_rows(
-  extract_effect(
-    did_main_thesis, "DFI:Post", 10,
-    "DFIが10ポイント高い地域", "原論文仕様"
-  ),
-  extract_effect(
-    did_main_valid, "DFI:Post", 10,
-    "DFIが10ポイント高い地域", "範囲確認後"
-  ),
-  extract_effect(
-    did_binary_thesis, "Treat_p:Post", 1,
-    "高DFI地域と低DFI地域の差", "原論文仕様"
-  ),
-  extract_effect(
-    did_binary_valid, "Treat_p:Post", 1,
-    "高DFI地域と低DFI地域の差", "範囲確認後"
-  )
-) %>%
-  mutate(
-    sample = factor(sample, levels = c("原論文仕様", "範囲確認後")),
-    model = factor(
-      model,
-      levels = c("高DFI地域と低DFI地域の差", "DFIが10ポイント高い地域")
-    )
-  )
-
-p_sensitivity <- ggplot(
-  effect_data,
-  aes(x = estimate, y = model, color = sample)
-) +
-  geom_vline(xintercept = 0, color = "grey55", linetype = "dashed") +
-  geom_errorbarh(
-    aes(xmin = lower, xmax = upper),
-    height = 0.16,
-    position = position_dodge(width = 0.45),
-    linewidth = 0.8
-  ) +
-  geom_point(position = position_dodge(width = 0.45), size = 3) +
-  scale_color_manual(values = c("原論文仕様" = "#E45756", "範囲確認後" = "#4C78A8")) +
-  labs(
-    title = "推定結果とデータ範囲の確認",
-    subtitle = "点は推定値、線は95%信頼区間",
-    x = "2014年から2018年の相対的な変化（パーセントポイント）",
-    y = NULL,
-    color = "使用データ",
-    caption = "範囲確認後：両年のエンゲル係数が0〜1の世帯。結果は処理方法に敏感である。"
-  ) +
-  theme_minimal(base_size = 13, base_family = "Hiragino Sans") +
-  theme(
-    legend.position = "top",
-    plot.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    plot.caption = element_text(hjust = 0, color = "grey35")
-  )
-
-ggsave(
-  filename = file.path(figure_dir, "model_sensitivity.png"),
-  plot = p_sensitivity,
-  width = 8,
-  height = 5,
-  dpi = 300,
-  bg = "white"
-)
-
-cat("\nFigures saved to:", normalizePath(figure_dir), "\n")
+sapply(data_long, class)
