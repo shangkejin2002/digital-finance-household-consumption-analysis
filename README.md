@@ -93,7 +93,6 @@ Engel_it = β(DFI_i × Post_t) + household fixed effects
     └── figures/
 ```
 
-- `code/data_preparation.do`：Stata によるデータ整理手順の公開用コード
 - `code/analysis.R`：データ整形、DID 推定、補足モデル、可視化
 - `data/README.md`：分析データの作成方法と変数定義
 - `docs/research_summary.md`：研究背景・設計・結果の要約
