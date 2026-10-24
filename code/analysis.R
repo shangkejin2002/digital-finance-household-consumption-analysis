@@ -1,8 +1,8 @@
 # Digital Financial Inclusion and Food Consumption in China
 # DID analysis and visualization using R
 
-# このスクリプトは原論文の分析仕様・変数・結果を変更せず、
-# 最終分析データの読み込みから DID 推定、図の出力までをまとめたものです。
+# このスクリプトは、分析データの読み込みから DID 推定、
+# 図の出力までをまとめたものです。
 
 # 1. パッケージの読み込み ---------------------------------------------------
 
@@ -15,7 +15,7 @@ library(modelsummary)
 
 # 注意：
 # 元データは利用制限があるため、このリポジトリには含めていません。
-# 分析を再現する場合は、データファイルを data/ フォルダに配置してください。
+# 実行する場合は、データファイルを data/ フォルダに配置してください。
 #
 # 想定するデータファイル名：
 # data/analysis_data.xlsx
@@ -76,7 +76,7 @@ summary(data_long)
 datasummary_skim(data_long)
 
 
-# 4. 主推定：連続 DFI を用いた DID 推定 -----------------------------------
+# 4. 連続 DFI を用いた DID 推定 -------------------------------------------
 
 # DID モデル：
 # Engel ~ DFI * Post | ID + Year
@@ -99,7 +99,7 @@ summary(did_main)
 modelsummary(did_main, fmt = "%.5f")
 
 
-# 5. 頑健性検証：DFI を二値化した DID 推定 --------------------------------
+# 5. DFI を二値化した DID 推定 --------------------------------------------
 
 # Treat_p は元データに含まれている二値変数を使用する。
 # Treat_p = 1：高 DFI 地域
