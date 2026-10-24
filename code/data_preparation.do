@@ -1,10 +1,18 @@
 *******************************************************************************
-* CFPS 2014/2018: data preparation workflow
-* Purpose: document the Stata workflow used before the R analysis
+* CFPS 2014/2018: public data-preparation notes
+* Purpose: document the confirmed Stata steps used before the R analysis
 *
 * Raw CFPS files are not distributed with this repository. Set the folders
 * below to the location of data obtained through an authorized CFPS account.
 * File and variable names may differ slightly by the CFPS release version.
+*
+* IMPORTANT:
+* This file is a readable workflow summary, not a complete reproduction script.
+* In the original CFPS household files, fid10 is not unique because households
+* can split between waves. The historical code that selected one comparable
+* household record per ID could not be fully reconstructed. This file therefore
+* does not invent a deduplication rule. See data/README.md for the verified
+* sample counts and limitations.
 *******************************************************************************
 
 version 17
@@ -32,8 +40,9 @@ foreach var of varlist FOOD_2014 TOTAL_2014 {
     replace `var' = . if inlist(`var', -10, -9, -8, -2, -1)
 }
 
-isid fid10
-save "${working}/cfps2014_household.dta", replace
+* fid10 is not unique in the unprocessed household file.
+duplicates report fid10
+save "${working}/cfps2014_extracted.dta", replace
 
 * 3. Prepare the 2018 household file ------------------------------------------
 
@@ -48,13 +57,18 @@ foreach var of varlist FOOD_2018 TOTAL_2018 {
     replace `var' = . if inlist(`var', -10, -9, -8, -2, -1)
 }
 
-isid fid10
-save "${working}/cfps2018_household.dta", replace
+* fid10 is not unique in the unprocessed household file.
+duplicates report fid10
+save "${working}/cfps2018_extracted.dta", replace
 
 * 4. Match households observed in both waves ----------------------------------
 
-use "${working}/cfps2014_household.dta", clear
-merge 1:1 fid10 using "${working}/cfps2018_household.dta"
+* The two inputs below refer to the historical household-selection stage.
+* They must contain exactly one retained record per fid10. Their construction
+* is not reproduced here because the original selection code was not preserved.
+use "${working}/cfps2014_analysis_households.dta", clear
+isid fid10
+merge 1:1 fid10 using "${working}/cfps2018_analysis_households.dta"
 
 * Keep households observed in both 2014 and 2018.
 keep if _merge == 3
@@ -70,6 +84,11 @@ gen Engel_2018 = FOOD_2018 / TOTAL_2018
 
 label variable Engel_2014 "Engel coefficient, 2014"
 label variable Engel_2018 "Engel coefficient, 2018"
+
+* Do not silently delete range violations. Report them for review and let the
+* R script show the thesis specification and the sensitivity sample separately.
+count if !missing(Engel_2014) & !inrange(Engel_2014, 0, 1)
+count if !missing(Engel_2018) & !inrange(Engel_2018, 0, 1)
 
 * 6. Merge the province-level 2014 DFI index ----------------------------------
 
