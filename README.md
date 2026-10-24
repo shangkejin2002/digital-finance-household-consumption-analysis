@@ -28,7 +28,7 @@ CFPS の特殊欠損値を処理し、変数名を年次間で統一
 Post・Treat_p を作成し、DID 推定と可視化を実施
 ```
 
-Stata で行った前処理を読みやすくまとめたコードは [`code/data_preparation.do`](code/data_preparation.do)、最終分析データの項目は [`data/README.md`](data/README.md) に記載しています。
+データ整理の詳細と最終分析データの項目は [`data/README.md`](data/README.md) に記載しています。
 
 ## 分析方法と主要変数
 
@@ -64,18 +64,13 @@ Engel_it = β(DFI_i × Post_t) + household fixed effects
 
 ![高 DFI 地域と低 DFI 地域の比較](results/figures/engel_by_dfi_treat.png)
 
-### 連続 DFI と二値化 DFI の記述的パターン比較
-
-![連続 DFI と二値化 DFI の比較](results/figures/did_model_comparison.png)
-
 ## 使用技術
 
-- **Stata**：CFPS の変数抽出、欠損値処理、年次データの結合、パネル構築
-- **R / tidyverse / readxl**：分析データの整形と確認
+- **Excel**：CFPS・DFI データの整理、確認、分析用データの作成
+- **R / tidyverse / readxl**：分析データの読み込み、整形、確認
 - **R / fixest**：固定効果を含む DID 推定
 - **R / modelsummary**：回帰結果の整理
 - **R / ggplot2**：分析結果の可視化
-- **Excel**：最終分析データの確認と受け渡し
 
 ## ファイル構成
 
@@ -83,8 +78,7 @@ Engel_it = β(DFI_i × Post_t) + household fixed effects
 .
 ├── README.md
 ├── code/
-│   ├── analysis.R
-│   └── data_preparation.do
+│   └── analysis.R
 ├── data/
 │   └── README.md
 ├── docs/
